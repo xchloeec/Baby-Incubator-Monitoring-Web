@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Camera, Download, Share, Heart, Calendar, Clock } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
+const PI_BASE = "http://192.168.137.6:5000";
+
 interface Photo {
   id: string;
   url: string;
@@ -19,11 +21,21 @@ interface PhotoGalleryProps {
   newPhotoData?: { id: string; timestamp: Date; liveImage: string };
 }
 
+function toDateSafe(v: unknown): Date {
+  if (typeof v === "number" && Number.isFinite(v)) return new Date(v * 1000);
+  if (typeof v === "string") {
+    const t = Date.parse(v);
+    if (!Number.isNaN(t)) return new Date(t);
+  }
+  if (v instanceof Date) return v;
+  return new Date();
+}
+
 export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>([
     {
       id: '1',
-      url: 'https://images.unsplash.com/photo-1704649917979-9a23d585da95?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuZXdib3JuJTIwYmFieSUyMHNsZWVwaW5nfGVufDF8fHx8MTc1OTkyMTg0Nnww&ixlib=rb-4.1.0&q=80&w=400',
+      url: 'https://media.istockphoto.com/id/1321458945/photo/newborn-baby-sleep-at-first-days-of-life-portrait-of-new-born-child-boy-one-week-old-sleeping.jpg?s=612x612&w=0&k=20&c=yDYOLloEdbFExU73HCHUgNjkqLlbniBU91it80IzsnY=',
       timestamp: new Date(Date.now() - 86400000), // 1 day ago
       description: 'Sweet dreams in the incubator',
       isFavorite: true,
@@ -31,7 +43,7 @@ export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
     },
     {
       id: '2',
-      url: 'https://images.unsplash.com/photo-1723990140290-1c7c6fd4bc92?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWJ5JTIwc2xlZXBpbmclMjBwZWFjZWZ1bHxlbnwxfHx8fDE3NTk5MjE4NTJ8MA&ixlib=rb-4.1.0&q=80&w=400',
+      url: 'https://media.istockphoto.com/id/1389431211/photo/newborn-baby-sleeping-smiling-cute-infant-child-in-wrap-bodysuit-new-born-little-boy-smile-in.jpg?s=612x612&w=0&k=20&c=ASQjS9UCWpddE0sDVEgxrAyke6BOF-im7LpI0sXECck=',
       timestamp: new Date(Date.now() - 43200000), // 12 hours ago
       description: 'Resting comfortably',
       isFavorite: false,
@@ -39,7 +51,7 @@ export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
     },
     {
       id: '3',
-      url: 'https://images.unsplash.com/photo-1757693074716-16795a1650b9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuZXdib3JuJTIwYmFieSUyMGN1dGV8ZW58MXx8fHwxNzU5OTIxODU0fDA&ixlib=rb-4.1.0&q=80&w=400',
+      url: 'https://raisingchildren.net.au/__data/assets/image/0026/47816/newborn-behaviour-nutshellnarrow.jpg',
       timestamp: new Date(Date.now() - 21600000), // 6 hours ago
       description: 'Growing stronger every day',
       isFavorite: true,
@@ -47,7 +59,7 @@ export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
     },
     {
       id: '4',
-      url: 'https://images.unsplash.com/photo-1685458249619-b78fe5ee7abe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWJ5JTIwcG9ydHJhaXQlMjBuZXdib3JufGVufDF8fHx8MTc1OTkyMTg2MHww&ixlib=rb-4.1.0&q=80&w=400',
+      url: 'https://static.vecteezy.com/system/resources/thumbnails/052/112/653/small/beautiful-newborn-baby-smiling-on-white-cottony-background-photo.jpg',
       timestamp: new Date(Date.now() - 7200000), // 2 hours ago
       description: 'Precious moments captured',
       isFavorite: true,
@@ -55,7 +67,7 @@ export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
     },
     {
       id: '5',
-      url: 'https://images.unsplash.com/flagged/photo-1551049215-23fd6d2ac3f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWJ5JTIwaG9zcGl0YWwlMjBtZWRpY2FsfGVufDF8fHx8MTc1OTkyMTg1N3ww&ixlib=rb-4.1.0&q=80&w=400',
+      url: 'https://raisingchildren.net.au/__data/assets/image/0026/48095/newborn-first-weeknarrow.jpg',
       timestamp: new Date(Date.now() - 3600000), // 1 hour ago
       description: 'Medical care in progress',
       isFavorite: false,
@@ -63,7 +75,7 @@ export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
     },
     {
       id: '6',
-      url: 'https://images.unsplash.com/photo-1730962979311-3893372ba575?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWJ5JTIwaG9zcGl0YWwlMjBpbmN1YmF0b3J8ZW58MXx8fHwxNzU5OTIxODQ5fDA&ixlib=rb-4.1.0&q=80&w=400',
+      url: 'https://www.shutterstock.com/image-photo/newborn-baby-boy-who-just-600nw-2278473701.jpg',
       timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
       description: 'Safe in the incubator environment',
       isFavorite: true,
@@ -76,27 +88,52 @@ export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
 
   // Add new photo when captured from live feed
   useEffect(() => {
-    if (newPhotoData) {
-      const descriptions = [
-        'Live feed capture - Sweet dreams',
-        'Camera snapshot - Precious moment',
-        'Live moment - Growing strong',
-        'Video capture - Peaceful rest',
-        'Feed screenshot - Adorable baby',
-        'Live camera - Beautiful memory'
-      ];
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const res = await fetch(`${PI_BASE}/api/photos`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        const converted: Photo[] = data.map((p: any) => ({
+          id: String(p.id),
+          url: p.url.startsWith('http') ? p.url : `${PI_BASE}${p.url}`,
+          timestamp: toDateSafe(p.timestamp),
+          description: p.description || 'Captured moment',
+          isFavorite: false,
+          tags: p.tags ?? ['baby', 'capture'],
+        }));
+
+        if (isMounted) setPhotos(converted);
+      } catch (err) {
+        console.error('Failed to fetch /api/photos:', err);
+      }
+    })();
+
+    return () => { isMounted = false; };
+  }, []);
+  //   if (newPhotoData) {
+  //     const descriptions = [
+  //       'Live feed capture - Sweet dreams',
+  //       'Camera snapshot - Precious moment',
+  //       'Live moment - Growing strong',
+  //       'Video capture - Peaceful rest',
+  //       'Feed screenshot - Adorable baby',
+  //       'Live camera - Beautiful memory'
+  //     ];
       
-      const newPhoto: Photo = {
-        id: newPhotoData.id,
-        url: newPhotoData.liveImage,
-        timestamp: newPhotoData.timestamp,
-        description: descriptions[Math.floor(Math.random() * descriptions.length)],
-        isFavorite: false,
-        tags: ['recent', 'captured', 'live-feed', 'screenshot']
-      };
-      setPhotos(prev => [newPhoto, ...prev]);
-    }
-  }, [newPhotoData]);
+  //     const newPhoto: Photo = {
+  //       id: newPhotoData.id,
+  //       url: newPhotoData.liveImage,
+  //       timestamp: newPhotoData.timestamp,
+  //       description: descriptions[Math.floor(Math.random() * descriptions.length)],
+  //       isFavorite: false,
+  //       tags: ['recent', 'captured', 'live-feed', 'screenshot']
+  //     };
+  //     setPhotos(prev => [newPhoto, ...prev]);
+  //   }
+  // }, [newPhotoData]);
 
   const toggleFavorite = (photoId: string) => {
     setPhotos(prev => prev.map(photo =>
@@ -137,7 +174,14 @@ export function PhotoGallery({ newPhotoData }: PhotoGalleryProps) {
     console.log('Sharing photo:', photo.id);
   };
 
-  const filteredPhotos = getFilteredPhotos();
+    const filteredPhotos = (() => {
+    if (filter === 'favorites') return photos.filter(p => p.isFavorite);
+    if (filter === 'recent') {
+      const oneDayAgo = new Date(Date.now() - 86400000);
+      return photos.filter(p => p.timestamp > oneDayAgo);
+    }
+    return photos;
+  })();
 
   return (
     <div className="space-y-4">

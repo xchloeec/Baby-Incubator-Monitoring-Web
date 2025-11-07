@@ -33,7 +33,7 @@ export default function App() {
     // const s = io("http://172.26.152.203:5000"); // Cleo pi
     //const s = io("http://192.168.137.30:5000"); // Chloe pi
     // const s = io("http://localhost:5000");    // forwarded port option
-    const s = io("http://192.168.137.30:5000", {
+    const s = io("http://192.168.137.6:5000", {
     transports: ["polling"],
     withCredentials: true,
   });

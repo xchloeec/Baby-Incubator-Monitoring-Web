@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -9,6 +9,8 @@ import { PositionControl } from './PositionControl';
 import { PhotoGallery } from './PhotoGallery';
 import { AlertSystem } from './AlertSystem';
 import { NursingNotes } from './NursingNotes';
+import CryingClassification from './CryingClassification';
+import { Volume2 } from 'lucide-react';
 import { 
   Activity, 
   Camera, 
@@ -21,10 +23,13 @@ import {
   Users,
   Clock,
   FileText,
-  Phone
+  Phone,
+  Radio,
+  FlaskConical,
+  Zap,
+  RefreshCw
 } from 'lucide-react';
 
-// ✅ Add sensorData prop (no change to existing ones)
 interface HospitalInterfaceProps {
   onBackToSelection: () => void;
   sensorData?: {
@@ -46,12 +51,25 @@ interface HospitalInterfaceProps {
 }
 
 export function HospitalInterface({ onBackToSelection, sensorData, socket, bedState }: HospitalInterfaceProps) {
+  // --- Popup (non-intrusive toast) ---
+  const [popup, setPopup] = useState<{title: string; description: string; tone: 'danger' | 'warn' | 'info'} | null>(null);
+  const showPopup = (title: string, description: string, tone: 'danger'|'warn'|'info'='info') => {
+    setPopup({ title, description, tone });
+    window.setTimeout(() => setPopup(null), 4500);
+  };
+
+  
   const [emergencyAlerts, setEmergencyAlerts] = useState<string[]>([]);
   const [cryingIntensity, setCryingIntensity] = useState(0);
   const [capturedPhotoData, setCapturedPhotoData] = useState<{ id: string; timestamp: Date; liveImage: string } | undefined>();
 
+  // NEW: Alerts data mode
+  const [alertsDataMode, setAlertsDataMode] = useState<'realtime' | 'simulate'>('realtime');
+
+  // ===== helpers =====
   const handleEmergencyAlert = (message: string) => {
     setEmergencyAlerts(prev => [...prev, message]);
+    // 触发给 <AlertSystem /> 之后，把触发数组清空（你原本就这样做的）
     setTimeout(() => {
       setEmergencyAlerts(prev => prev.filter(alert => alert !== message));
     }, 100);
@@ -66,7 +84,104 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
     setTimeout(() => setCapturedPhotoData(undefined), 100);
   };
 
-  return (
+  const randomEmergencyMessage = () => {
+    const samples = [
+      'SpO₂ dropped below 88%',
+      'Heart rate exceeded safe range',
+      'Temperature out of range',
+      'Apnea event detected',
+      'Humidity sensor anomaly',
+      'Bed instability detected',
+    ];
+    return samples[Math.floor(Math.random() * samples.length)];
+  };
+
+  const oneShotRandomEmergency = () => {
+    handleEmergencyAlert(randomEmergencyMessage());
+  };
+
+  const oneShotCryingSpike = () => {
+    // 让它大概率 >70，触发 AlertSystem 的哭声告警
+    const spike = 70 + Math.floor(Math.random() * 30); // 70~99
+    handleCryingDetected(spike);
+  };
+
+  // ====== SIMULATION INTERVALS ======
+  const simAlertTimerRef = useRef<number | null>(null);
+  const simCryTimerRef = useRef<number | null>(null);
+
+  const startSimulation = () => {
+    stopSimulation();
+    // 每 6 秒触发一次随机紧急告警
+    simAlertTimerRef.current = window.setInterval(() => {
+      oneShotRandomEmergency();
+    }, 6000);
+    // 每 4 秒刷新一次哭声，20% 概率大于 70
+    simCryTimerRef.current = window.setInterval(() => {
+      const high = Math.random() < 0.2;
+      const val = high ? 70 + Math.floor(Math.random() * 30) : Math.floor(Math.random() * 60);
+      handleCryingDetected(val);
+    }, 4000);
+  };
+
+  const stopSimulation = () => {
+    if (simAlertTimerRef.current) {
+      clearInterval(simAlertTimerRef.current);
+      simAlertTimerRef.current = null;
+    }
+    if (simCryTimerRef.current) {
+      clearInterval(simCryTimerRef.current);
+      simCryTimerRef.current = null;
+    }
+  };
+
+  // ====== SOCKET (REALTIME) SUBSCRIPTIONS ======
+  useEffect(() => {
+  if (alertsDataMode !== 'realtime' || !socket) return;
+
+  const onEmergency = (msg: any) => {
+    const text = typeof msg === 'string' ? msg : (msg?.message ?? 'Emergency alert');
+    handleEmergencyAlert(text);
+
+    // NEW: popup
+    const sev = (typeof msg === 'object' ? msg?.severity : undefined) as 'warning'|'info'|undefined;
+    showPopup(
+      sev === 'warning' ? 'Crying Detected' : 'System Notice',
+      text,
+      sev === 'warning' ? 'danger' : 'info'
+    );
+  };
+
+  const onCrying = (val: any) => {
+    const n = typeof val === 'number' ? val : Number(val?.intensity ?? 0);
+    handleCryingDetected(isNaN(n) ? 0 : n);
+
+    // Optional: toast only on high intensity
+    if (!isNaN(n) && n >= 80) {
+      showPopup('High Crying Intensity', `Detected ~${Math.round(n)}%`, 'warn');
+    }
+  };
+
+  socket.on('emergency_alert', onEmergency);
+  socket.on('crying_intensity', onCrying);
+  return () => {
+    socket.off('emergency_alert', onEmergency);
+    socket.off('crying_intensity', onCrying);
+  };
+}, [alertsDataMode, socket]);
+
+
+  // 切换模式时启动/停止模拟
+  useEffect(() => {
+    if (alertsDataMode === 'simulate') {
+      startSimulation();
+    } else {
+      stopSimulation();
+    }
+    return () => stopSimulation();
+  }, [alertsDataMode]);
+
+   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Header */}
       <div className="bg-white border-b shadow-sm">
@@ -88,7 +203,7 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
                 <div>
                   <h1 className="text-xl font-semibold">NeoGuard Medical Dashboard</h1>
                   <p className="text-sm text-muted-foreground">
-                    Patient: Emma Johnson • DOB: Oct 1, 2024 • 7 days old
+                    Patient: Cleo • DOB: Nov 6, 2025 • 7 days old
                   </p>
                 </div>
               </div>
@@ -97,7 +212,7 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
             <div className="flex items-center gap-4">
               {/* Staff Info */}
               <div className="text-right">
-                <div className="text-sm font-medium">Dr. Sarah Johnson</div>
+                <div className="text-sm font-medium">Dr. Gokul</div>
                 <div className="text-xs text-muted-foreground">Primary Neonatologist</div>
               </div>
               
@@ -137,28 +252,33 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
       {/* Main Dashboard */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:grid-cols-6">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TabsList className="flex w-full flex-wrap gap-2 lg:grid lg:grid-cols-7 lg:w-auto">
+            <TabsTrigger value="overview" className="w-full justify-center gap-2 h-10">
               <Activity className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="video" className="flex items-center gap-2">
+
+            <TabsTrigger value="video" className="w-full justify-center gap-2 h-10">
               <Camera className="h-4 w-4" />
               <span className="hidden sm:inline">Live Feed</span>
             </TabsTrigger>
-            <TabsTrigger value="controls" className="flex items-center gap-2">
+
+            <TabsTrigger value="controls" className="w-full justify-center gap-2 h-10">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Controls</span>
             </TabsTrigger>
-            <TabsTrigger value="notes" className="flex items-center gap-2">
+
+            <TabsTrigger value="notes" className="w-full justify-center gap-2 h-10">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Nursing Notes</span>
             </TabsTrigger>
-            <TabsTrigger value="gallery" className="flex items-center gap-2">
+
+            <TabsTrigger value="gallery" className="w-full justify-center gap-2 h-10">
               <Image className="h-4 w-4" />
               <span className="hidden sm:inline">Documentation</span>
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="flex items-center gap-2">
+
+            <TabsTrigger value="alerts" className="w-full justify-center gap-2 h-10">
               <AlertTriangle className="h-4 w-4" />
               <span className="hidden sm:inline">Alerts</span>
               {emergencyAlerts.length > 0 && (
@@ -167,7 +287,14 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
                 </Badge>
               )}
             </TabsTrigger>
+
+            {/* NEW: Crying Classification */}
+            <TabsTrigger value="cry" className="w-full justify-center gap-2 h-10">
+              <Volume2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Crying Classification</span>
+            </TabsTrigger>
           </TabsList>
+
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
@@ -218,7 +345,7 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
               </div>
             </div>
 
-            {/* ✅ Pass live sensorData into SensorPanel */}
+            {/* Pass live sensorData into SensorPanel */}
             <SensorPanel 
               sensorData={sensorData} 
               onEmergencyAlert={handleEmergencyAlert} 
@@ -237,7 +364,7 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Primary Nurse:</span>
-                      <span className="font-medium">Maria Garcia, RN</span>
+                      <span className="font-medium">Sin Tian, RN</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Shift:</span>
@@ -260,9 +387,9 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-sm">
-                    <div>Dr. Sarah Johnson - Neonatologist</div>
-                    <div>Dr. Mike Chen - Respiratory Therapist</div>
-                    <div>Lisa Park, RD - Nutritionist</div>
+                    <div>Dr. Gokul - Neonatologist</div>
+                    <div>Dr. John - Respiratory Therapist</div>
+                    <div>Chloe Chong, RD - Nutritionist</div>
                   </div>
                 </CardContent>
               </Card>
@@ -286,14 +413,13 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
 
           {/* Video Tab */}
           <TabsContent value="video">
-            <VideoFeed socket={socket}onCapturePhoto={handlePhotoCapture} />
+            <VideoFeed socket={socket} onCapturePhoto={handlePhotoCapture} />
           </TabsContent>
 
           {/* Controls Tab */}
           <TabsContent value="controls">
-          <PositionControl bedState={bedState} socket={socket} />
+            <PositionControl bedState={bedState} socket={socket} />
           </TabsContent>
-
 
           {/* Nursing Notes Tab */}
           <TabsContent value="notes">
@@ -307,13 +433,109 @@ export function HospitalInterface({ onBackToSelection, sensorData, socket, bedSt
 
           {/* Alerts Tab */}
           <TabsContent value="alerts">
+            {/* 顶部：模式切换 + 一键触发 */}
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    Alerts Test Controls
+                  </span>
+                  <div className="flex gap-2">
+                    <Badge variant={alertsDataMode === 'realtime' ? 'default' : 'outline'}>
+                      <Radio className="h-3 w-3 mr-1" />
+                      Realtime
+                    </Badge>
+                    <Badge variant={alertsDataMode === 'simulate' ? 'default' : 'outline'}>
+                      <FlaskConical className="h-3 w-3 mr-1" />
+                      Simulate
+                    </Badge>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                <Button
+                  variant={alertsDataMode === 'realtime' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAlertsDataMode('realtime')}
+                  title="Use socket events (emergency_alert / crying_intensity)"
+                >
+                  <Radio className="h-4 w-4 mr-1" />
+                  Realtime
+                </Button>
+                <Button
+                  variant={alertsDataMode === 'simulate' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAlertsDataMode('simulate')}
+                  title="Generate random alerts & crying spikes periodically"
+                >
+                  <FlaskConical className="h-4 w-4 mr-1" />
+                  Simulate
+                </Button>
+
+                <div className="w-px h-6 bg-muted mx-1" />
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={oneShotRandomEmergency}
+                  title="Trigger one random emergency"
+                >
+                  <Zap className="h-4 w-4 mr-1" />
+                  Add Random Emergency
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={oneShotCryingSpike}
+                  title="Raise crying intensity once (>70 likely)"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Spike Crying
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* 真正的 AlertSystem 展示 */}
             <AlertSystem 
               emergencyAlerts={emergencyAlerts}
               cryingIntensity={cryingIntensity}
             />
           </TabsContent>
+
+          {/* Crying Classification Tab */}
+            <TabsContent value="cry" className="space-y-6">
+              <CryingClassification socket={socket} />
+            </TabsContent>
+
         </Tabs>
       </div>
-    </div>
+    
+      {/* Floating Popup */}
+      {popup && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className={`w-[320px] rounded-2xl shadow-xl border p-4 bg-white
+            ${popup.tone === 'danger' ? 'border-red-200' : popup.tone === 'warn' ? 'border-orange-200' : 'border-blue-200'}`}>
+            <div className="flex items-start gap-3">
+              <div className={`h-2 w-2 mt-2 rounded-full
+                ${popup.tone === 'danger' ? 'bg-red-500' : popup.tone === 'warn' ? 'bg-orange-500' : 'bg-blue-500'}`} />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate">{popup.title}</div>
+                <div className="text-sm text-muted-foreground break-words mt-1">
+                  {popup.description}
+                </div>
+              </div>
+              <button
+                className="text-sm text-muted-foreground hover:opacity-70"
+                onClick={() => setPopup(null)}
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 }

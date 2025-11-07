@@ -1,9 +1,9 @@
-//import io from "socket.io-client";
-//const socket = io("http://172.26.152.203:5000");  // same IP as your Pi
+import io from "socket.io-client";
+const socket = io("http://172.26.152.203:5000");  // same IP as your Pi
 //const socket = props.socket;
 
 import { VoiceRecorder } from "./VoiceRecorder";
-import { useState } from "react";
+import { useState} from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -12,6 +12,7 @@ import { VideoFeed } from "./VideoFeed";
 import { PhotoGallery } from "./PhotoGallery";
 import { AudioControls } from "./AudioControls";
 import { MilestoneTracker } from "./MilestoneTracker";
+import CryingClassification from "./CryingClassification";
 
 
 import {
@@ -29,6 +30,9 @@ import {
   Droplets,
   Trophy,
 } from "lucide-react";
+
+import { useEffect } from "react";
+//import { useToast } from "./ui/use-toast";   // make sure this file exists (see below)
 
 // ✅ Add sensorData prop so readings come from App.tsx
 interface ParentInterfaceProps {
@@ -48,6 +52,31 @@ export function ParentInterface({ sensorData, socket,onBackToSelection}: ParentI
     { id: string; timestamp: Date; liveImage: string } | undefined
   >();
   const [cryingIntensity, setCryingIntensity] = useState(0);
+  //const { toast } = useToast();
+
+    // useEffect(() => {
+    // if (!socket) return;
+
+    // socket.on("connect", () => {
+    //   console.log("✅ Connected to baby monitor server");
+    // });
+
+    // socket.on("baby_alert", (data: any) => {
+    //   console.log("📩 Baby alert received:", data);
+
+      // show toast popup
+  //     toast({
+  //       title: data.status === "crying" ? "🚨 Baby Crying Detected" : "✅ Baby Calm Again",
+  //       description: data.message,
+  //       variant: data.status === "crying" ? "destructive" : "default",
+  //     });
+  //   });
+
+  //   return () => {
+  //     socket.off("baby_alert");
+  //     socket.off("connect");
+  //   };
+  // }, [socket, toast]);
 
   // 🔹 Removed Raspberry Pi socket connection (this now comes from App.tsx)
   // 🔹 sensorData will update automatically from parent component
@@ -144,24 +173,33 @@ export function ParentInterface({ sensorData, socket,onBackToSelection}: ParentI
       {/* ---------- Main Tabs ---------- */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="video" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
-            <TabsTrigger value="video" className="flex items-center gap-2">
-              <Camera className="h-4 w-4" />
+          <TabsList className="flex w-full flex-wrap gap-2 lg:grid lg:grid-cols-5 lg:w-auto">
+            <TabsTrigger value="video" className="w-full justify-center gap-2 h-10">
+              <Camera className="h-5 w-5" />
               <span className="hidden sm:inline">Live View & Talk</span>
             </TabsTrigger>
-            <TabsTrigger value="vitals" className="flex items-center gap-2">
-              <Heart className="h-4 w-4" />
+
+            <TabsTrigger value="vitals" className="w-full justify-center gap-2 h-10">
+              <Heart className="h-5 w-5" />
               <span className="hidden sm:inline">Health & Growth</span>
             </TabsTrigger>
-            <TabsTrigger value="milestones" className="flex items-center gap-2">
-              <Baby className="h-4 w-4" />
+
+            <TabsTrigger value="milestones" className="w-full justify-center gap-2 h-10">
+              <Baby className="h-5 w-5" />
               <span className="hidden sm:inline">Milestones</span>
             </TabsTrigger>
-            <TabsTrigger value="memories" className="flex items-center gap-2">
-              <Image className="h-4 w-4" />
+
+            <TabsTrigger value="memories" className="w-full justify-center gap-2 h-10">
+              <Image className="h-5 w-5" />
               <span className="hidden sm:inline">Photo Memories</span>
             </TabsTrigger>
+
+            <TabsTrigger value="cry" className="w-full justify-center gap-2 h-10">
+              <Volume2 className="h-5 w-5" />
+              <span className="hidden sm:inline">Crying Classification</span>
+            </TabsTrigger>
           </TabsList>
+
 
           {/* ---------- Video Tab ---------- */}
           <TabsContent value="video" className="space-y-6">
@@ -170,7 +208,8 @@ export function ParentInterface({ sensorData, socket,onBackToSelection}: ParentI
                 <VideoFeed
                   onCapturePhoto={handlePhotoCapture}
                   showAudioControls={true}
-                  onCryingDetected={handleCryingDetected} socket={undefined}                />
+                  //onCryingDetected={handleCryingDetected} socket={undefined}                />
+                  onCryingDetected={handleCryingDetected} socket={socket} />
 
         <>
           💬 Press & Hold to Talk Button
@@ -271,13 +310,13 @@ export function ParentInterface({ sensorData, socket,onBackToSelection}: ParentI
                   <CardContent className="space-y-3">
                     <div className="space-y-2">
                       <div className="text-sm">
-                        <div className="font-medium">Dr. Sarah Johnson</div>
+                        <div className="font-medium">Dr. Gokul</div>
                         <div className="text-muted-foreground">
                           Primary Neonatologist
                         </div>
                       </div>
                       <div className="text-sm">
-                        <div className="font-medium">Nurse Maria Garcia</div>
+                        <div className="font-medium">Nurse Sin Tian</div>
                         <div className="text-muted-foreground">
                           Day Shift • On duty
                         </div>
@@ -365,6 +404,12 @@ export function ParentInterface({ sensorData, socket,onBackToSelection}: ParentI
           <TabsContent value="memories">
             <PhotoGallery newPhotoData={capturedPhotoData} />
           </TabsContent>
+
+          {/* ---------- Crying Classification Tab ---------- */}
+          <TabsContent value="cry" className="space-y-6">
+            <CryingClassification socket={socket} />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>

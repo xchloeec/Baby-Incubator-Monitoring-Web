@@ -1,8 +1,8 @@
 
   import { defineConfig } from 'vite';
-  //import react from '@vitejs/plugin-react-swc';
   import react from "@vitejs/plugin-react";
   import path from 'path';
+  
 
   export default defineConfig({
     plugins: [react()],
@@ -50,12 +50,14 @@
         '@': path.resolve(__dirname, './src'),
       },
     },
-    build: {
-      target: 'esnext',
-      outDir: 'build',
-    },
     server: {
-      port: 3000,
-      open: true,
+    port: 5000, // <-- UI on 5000
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', // <-- backend on 3000
+        changeOrigin: true,
+      },
     },
-  });
+  },
+})
+  
