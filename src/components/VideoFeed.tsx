@@ -2,18 +2,20 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Camera, CameraOff, Maximize } from 'lucide-react';
-import io from 'socket.io-client';
+//import io from 'socket.io-client';
 
 interface VideoFeedProps {
+  socket: any; //replace the import io
   onCapturePhoto: (photoData: { id: string; timestamp: Date; liveImage: string }) => void;
   showAudioControls?: boolean;
   onCryingDetected?: (intensity: number) => void;
 }
 
 // 🔗 Connect to your Pi backend (update IP if needed)
-const socket = io('http://172.26.152.203:5000');  // or use https:// if SSL enabled
+/////const socket = io('http://172.26.152.203:5000');  // or use https:// if SSL enabled
 
-export function VideoFeed({ onCapturePhoto }: VideoFeedProps) {
+
+export function VideoFeed({ socket,onCapturePhoto }: VideoFeedProps) {
   const [isLive, setIsLive] = useState(false);
   const [frame, setFrame] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);

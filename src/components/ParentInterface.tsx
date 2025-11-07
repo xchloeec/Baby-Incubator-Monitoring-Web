@@ -1,5 +1,5 @@
-import io from "socket.io-client";
-const socket = io("http://172.26.152.203:5000");  // same IP as your Pi
+//import io from "socket.io-client";
+//const socket = io("http://172.26.152.203:5000");  // same IP as your Pi
 //const socket = props.socket;
 
 import { VoiceRecorder } from "./VoiceRecorder";
@@ -32,8 +32,7 @@ import {
 
 // ✅ Add sensorData prop so readings come from App.tsx
 interface ParentInterfaceProps {
-  onBackToSelection: () => void;
-  sensorData?: {
+  sensorData: {
     heartRate: number;
     oxygenLevel: number;
     temperature: number;
@@ -41,9 +40,10 @@ interface ParentInterfaceProps {
     gyroscope: { x: number; y: number; z: number };
   };
   socket: any;
+  onBackToSelection: () => void;
 }
 
-export function ParentInterface({ onBackToSelection, sensorData, socket }: ParentInterfaceProps) {
+export function ParentInterface({ sensorData, socket,onBackToSelection}: ParentInterfaceProps) {
   const [capturedPhotoData, setCapturedPhotoData] = useState<
     { id: string; timestamp: Date; liveImage: string } | undefined
   >();
@@ -170,8 +170,7 @@ export function ParentInterface({ onBackToSelection, sensorData, socket }: Paren
                 <VideoFeed
                   onCapturePhoto={handlePhotoCapture}
                   showAudioControls={true}
-                  onCryingDetected={handleCryingDetected}
-                />
+                  onCryingDetected={handleCryingDetected} socket={undefined}                />
 
         <>
           💬 Press & Hold to Talk Button

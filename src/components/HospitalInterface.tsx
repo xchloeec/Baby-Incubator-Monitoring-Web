@@ -34,9 +34,18 @@ interface HospitalInterfaceProps {
     humidity: number;
     gyroscope: { x: number; y: number; z: number };
   };
+  socket: any;
+  bedState: {
+    label: string;
+    description: string;
+    x: number;
+    y: number;
+    z: number;
+    stable: boolean;
+  };
 }
 
-export function HospitalInterface({ onBackToSelection, sensorData }: HospitalInterfaceProps) {
+export function HospitalInterface({ onBackToSelection, sensorData, socket, bedState }: HospitalInterfaceProps) {
   const [emergencyAlerts, setEmergencyAlerts] = useState<string[]>([]);
   const [cryingIntensity, setCryingIntensity] = useState(0);
   const [capturedPhotoData, setCapturedPhotoData] = useState<{ id: string; timestamp: Date; liveImage: string } | undefined>();
@@ -205,7 +214,7 @@ export function HospitalInterface({ onBackToSelection, sensorData }: HospitalInt
 
               {/* Video Feed */}
               <div className="lg:col-span-3">
-                <VideoFeed onCapturePhoto={handlePhotoCapture} />
+                <VideoFeed socket={socket} onCapturePhoto={handlePhotoCapture} />
               </div>
             </div>
 
@@ -277,13 +286,14 @@ export function HospitalInterface({ onBackToSelection, sensorData }: HospitalInt
 
           {/* Video Tab */}
           <TabsContent value="video">
-            <VideoFeed onCapturePhoto={handlePhotoCapture} />
+            <VideoFeed socket={socket}onCapturePhoto={handlePhotoCapture} />
           </TabsContent>
 
           {/* Controls Tab */}
           <TabsContent value="controls">
-            <PositionControl />
+          <PositionControl bedState={bedState} socket={socket} />
           </TabsContent>
+
 
           {/* Nursing Notes Tab */}
           <TabsContent value="notes">

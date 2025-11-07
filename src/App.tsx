@@ -18,15 +18,37 @@ export default function App() {
     gyroscope: { x: 0, y: 0, z: 0 },
   });
 
+  // live bed state from Pi
+  const [bedState, setBedState] = useState({
+    label: "Neutral",
+    description: "Flat, centered position",
+    x: 0,
+    y: 0,
+    z: 0,
+    stable: true,
+  })
+
   useEffect(() => {
-    const s = io("http://172.26.152.203:5000");
+    // create socket once when component mounts
+    // const s = io("http://172.26.152.203:5000"); // Cleo pi
+    //const s = io("http://192.168.137.30:5000"); // Chloe pi
+    // const s = io("http://localhost:5000");    // forwarded port option
+    const s = io("http://192.168.137.30:5000", {
+    transports: ["polling"],
+    withCredentials: true,
+  });
+
+
+    // save in state so children can use it
     setSocket(s);
 
+    // handle successful connect
     s.on("connect", () => {
       console.log("✅ Connected to Raspberry Pi");
       s.emit("start_reading");
     });
 
+    // sensor data from Pi (heart rate, temp, etc.)
     s.on("sensor_data", (msg) => {
       console.log("📡 Received data:", msg);
       setSensorData({
@@ -38,9 +60,30 @@ export default function App() {
       });
     });
 
-    s.on("disconnect", () => console.warn("⚠️ Disconnected"));
-    return () => s.disconnect();
+    // bed position / angles from Pi
+    s.on("bed_position", (msg) => {
+      console.log("🛏 bed_position:", msg);
+      setBedState({
+        label: msg.label ?? "Neutral",
+        description: msg.description ?? "Flat, centered position",
+        x: msg.x ?? 0,
+        y: msg.y ?? 0,
+        z: msg.z ?? 0,
+        stable: msg.stable ?? true,
+      });
+    });
+
+    // just log disconnect
+    s.on("disconnect", () => {
+      console.warn("⚠️ Disconnected");
+    });
+
+    // CLEANUP: disconnect socket when App unmounts
+    return () => {
+      s.disconnect();
+    };
   }, []);
+
 
   // 🔹 Route to different interfaces
   if (role === "parent" && socket)
@@ -52,10 +95,12 @@ export default function App() {
       />
     );
 
-  if (role === "hospital")
+  if (role === "hospital" && socket)
     return (
       <HospitalInterface
         sensorData={sensorData}
+        bedState={bedState}
+        socket={socket} // Pass the socket down
         onBackToSelection={() => setRole(null)}
       />
     );
